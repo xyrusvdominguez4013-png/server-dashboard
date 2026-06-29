@@ -74,140 +74,149 @@ function renderServerCards(agents) {
  * Create a server card DOM element
  */
 function createServerCard(agent, cardId) {
-    const card = document.createElement('article');
+    const card = document.createElement('div');
     card.className = 'server-card connecting';
     card.id = cardId;
     card.dataset.ip = agent.ip;
     
     card.innerHTML = `
-        <header class="card-header">
-            <div class="server-info">
-                <h3 class="server-name">${escapeHtml(agent.name)}</h3>
-                <span class="server-ip">${agent.ip}</span>
-            </div>
+    <header class="card-header">
+        <div class="server-info">
+            <h3 class="server-name">${escapeHtml(agent.name)}</h3>
+            <span class="server-ip">${agent.ip}</span>
+        </div>
+        <div style="display: flex; gap: 8px; align-items: center;">
             <div class="card-status connecting" id="${cardId}-status">
                 <span class="status-indicator"></span>
-                <span>Connecting</span>
+                <span id="${cardId}-status-text">Connecting</span>
             </div>
-        </header>
-        <div class="metrics-container">
-            <div class="metrics-grid">
-                <div class="metric-box">
-                    <div class="metric-label">CPU</div>
-                    <div class="metric-value normal" id="${cardId}-cpu">--<span class="metric-unit">%</span></div>
+            <button class="remove-server-btn" title="Remove Server" onclick="removeServer(configuredAgents.findIndex(a => a.ip === '${agent.ip}'))">✕</button>
+        </div>
+    </header>
+    <div class="card-body">
+        <div class="specs-panel">
+            <div class="panel-title">System Specifications</div>
+            <div id="${cardId}-specs-content" class="inline-specs">
+                <div class="loading-text">Fetching specs...</div>
+            </div>
+        </div>
+        <div class="metrics-panel">
+            <div class="panel-title">Real-time Telemetry</div>
+            <div class="donuts-row">
+                <div class="donut-container">
+                    <canvas id="${cardId}-cpu-donut"></canvas>
+                    <div class="donut-label">CPU</div>
                 </div>
-                <div class="metric-box">
-                    <div class="metric-label">RAM</div>
-                    <div class="metric-value normal" id="${cardId}-ram">--<span class="metric-unit">%</span></div>
+                <div class="donut-container">
+                    <canvas id="${cardId}-ram-donut"></canvas>
+                    <div class="donut-label">RAM</div>
                 </div>
-                <div class="metric-box">
-                    <div class="metric-label">DISK</div>
-                    <div class="metric-value normal" id="${cardId}-disk">--<span class="metric-unit">%</span></div>
-                </div>
-                <div class="metric-box">
-                    <div class="metric-label">NETWORK</div>
-                    <div class="metric-value" id="${cardId}-network">--<span class="metric-unit">KB/s</span></div>
+                <div class="donut-container">
+                    <canvas id="${cardId}-disk-donut"></canvas>
+                    <div class="donut-label">DISK</div>
                 </div>
             </div>
-            <div class="chart-container">
-                <div class="chart-title">
-                    <span>CPU History</span>
-                    <span id="${cardId}-chart-time">Live</span>
-                </div>
-                <div class="chart-wrapper">
-                    <canvas id="${cardId}-chart"></canvas>
+            <div class="bar-chart-container" style="display: flex; flex-direction: column;">
+                <div class="panel-title" style="margin-bottom: 4px; border: none; text-align: center; font-size: 0.65rem;">Network Traffic</div>
+                <div style="flex: 1; position: relative;">
+                    <canvas id="${cardId}-net-bar"></canvas>
                 </div>
             </div>
         </div>
+    </div>
     `;
     
-    // Initialize Chart.js for this server after DOM insertion
-    setTimeout(() => initChart(cardId), 0);
+    setTimeout(() => {
+        initCharts(cardId);
+        fetchSpecsInline(agent.ip, agent.token, cardId);
+    }, 0);
     
     return card;
 }
 
-/**
- * Initialize Chart.js instance for a server card
- */
-function initChart(cardId) {
-    const canvas = document.getElementById(`${cardId}-chart`);
-    if (!canvas) return;
-    
-    const ctx = canvas.getContext('2d');
-    
-    // Create chart with dark theme styling
-    const chart = new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: [],
-            datasets: [{
-                label: 'CPU %',
-                data: [],
-                borderColor: '#58a6ff',
-                backgroundColor: 'rgba(88, 166, 255, 0.1)',
-                borderWidth: 2,
-                fill: true,
-                tension: 0.4,
-                pointRadius: 0,
-                pointHoverRadius: 4
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            animation: {
-                duration: 0
-            },
-            scales: {
-                x: {
-                    display: false,
-                    grid: {
-                        color: 'rgba(48, 54, 61, 0.5)'
-                    }
-                },
-                y: {
-                    min: 0,
-                    max: 100,
-                    grid: {
-                        color: 'rgba(48, 54, 61, 0.5)'
-                    },
-                    ticks: {
-                        color: '#8b949e',
-                        font: {
-                            family: "'JetBrains Mono', monospace",
-                            size: 10
-                        }
-                    }
-                }
-            },
-            plugins: {
-                legend: {
-                    display: false
-                },
-                tooltip: {
-                    enabled: true,
-                    backgroundColor: '#161b22',
-                    titleColor: '#f0f6fc',
-                    bodyColor: '#8b949e',
-                    borderColor: '#30363d',
-                    borderWidth: 1,
-                    titleFont: {
-                        family: "'JetBrains Mono', monospace"
-                    },
-                    bodyFont: {
-                        family: "'JetBrains Mono', monospace"
-                    }
-                }
-            }
-        }
-    });
-    
-    // Store chart reference in server state
+function initCharts(cardId) {
     const ip = cardId.replace('server-', '').replace(/-/g, '.');
     const state = serverStates.get(ip);
-    if (state) {
-        state.chart = chart;
+    if (!state) return;
+
+    state.charts = {};
+
+    const createDonut = (ctxId, color) => {
+        const canvas = document.getElementById(ctxId);
+        if (!canvas) return null;
+        return new Chart(canvas.getContext('2d'), {
+            type: 'doughnut',
+            data: {
+                labels: ['Used', 'Free'],
+                datasets: [{
+                    data: [0, 100],
+                    backgroundColor: [color, 'rgba(255,255,255,0.05)'],
+                    borderWidth: 0,
+                    cutout: '75%'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                animation: { duration: 0 },
+                plugins: { legend: { display: false }, tooltip: { enabled: false } },
+                events: []
+            },
+            plugins: [{
+                id: 'textCenter',
+                beforeDraw: function(chart) {
+                    var width = chart.width, height = chart.height, ctx = chart.ctx;
+                    ctx.restore();
+                    var fontSize = (height / 80).toFixed(2);
+                    ctx.font = fontSize + "em 'JetBrains Mono'";
+                    ctx.textBaseline = "middle";
+                    ctx.fillStyle = "#e2e8f0";
+                    var text = Math.round(chart.data.datasets[0].data[0]) + "%",
+                        textX = Math.round((width - ctx.measureText(text).width) / 2),
+                        textY = height / 2;
+                    ctx.fillText(text, textX, textY);
+                    ctx.save();
+                }
+            }]
+        });
+    };
+
+    state.charts.cpu = createDonut(`${cardId}-cpu-donut`, '#00f0ff');
+    state.charts.ram = createDonut(`${cardId}-ram-donut`, '#00ff9d');
+    state.charts.disk = createDonut(`${cardId}-disk-donut`, '#ffb700');
+
+    const netCanvas = document.getElementById(`${cardId}-net-bar`);
+    if (netCanvas) {
+        state.charts.net = new Chart(netCanvas.getContext('2d'), {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [
+                    { label: 'Sent (KB/s)', data: [], borderColor: '#00f0ff', backgroundColor: 'rgba(0, 240, 255, 0.1)', borderWidth: 2, fill: true, tension: 0.3, pointRadius: 0, pointHoverRadius: 4 },
+                    { label: 'Recv (KB/s)', data: [], borderColor: '#ff2a5f', backgroundColor: 'rgba(255, 42, 95, 0.1)', borderWidth: 2, fill: true, tension: 0.3, pointRadius: 0, pointHoverRadius: 4 }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                animation: { duration: 0 },
+                scales: {
+                    x: { display: false },
+                    y: { 
+                        beginAtZero: true, 
+                        grid: { color: 'rgba(59, 130, 246, 0.1)' },
+                        ticks: { color: '#64748b', font: { family: "'JetBrains Mono'" } }
+                    }
+                },
+                plugins: {
+                    legend: { 
+                        display: true, 
+                        labels: { color: '#e2e8f0', font: { family: "'JetBrains Mono'", size: 10 }, boxWidth: 12 }
+                    },
+                    tooltip: { mode: 'index', intersect: false }
+                }
+            }
+        });
     }
 }
 
@@ -336,75 +345,39 @@ function updateServerMetrics(ip, metrics) {
     const cardId = `server-${ip.replace(/\./g, '-')}`;
     const state = serverStates.get(ip);
     
-    if (!state) return;
+    if (!state || !state.charts) return;
     
-    // Update metric displays
-    updateMetricValue(cardId, 'cpu', metrics.cpu, '%');
-    updateMetricValue(cardId, 'ram', metrics.ram?.percent, '%');
-    updateMetricValue(cardId, 'disk', metrics.disk?.percent, '%');
+    const updateDonut = (chart, value) => {
+        if (chart && typeof value === 'number') {
+            chart.data.datasets[0].data = [value, Math.max(0, 100 - value)];
+            chart.update('none');
+        }
+    };
     
-    const totalNetworkMb = (metrics.network?.sent_mb_s || 0) + (metrics.network?.recv_mb_s || 0);
-    const networkBytesPerSec = totalNetworkMb * 1024 * 1024;
-    updateMetricValue(cardId, 'network', formatNetwork(networkBytesPerSec), 'KB/s');
+    updateDonut(state.charts.cpu, metrics.cpu);
+    updateDonut(state.charts.ram, metrics.ram?.percent);
+    updateDonut(state.charts.disk, metrics.disk?.percent);
     
-    // Update chart
-    if (state.chart) {
+    if (state.charts.net) {
+        const netChart = state.charts.net;
         const now = new Date();
         const timeLabel = now.toLocaleTimeString();
         
-        // Add new data point
-        state.chart.data.labels.push(timeLabel);
-        state.chart.data.datasets[0].data.push(metrics.cpu);
+        const sentKbps = ((metrics.network?.sent_mb_s || 0) * 1024).toFixed(2);
+        const recvKbps = ((metrics.network?.recv_mb_s || 0) * 1024).toFixed(2);
         
-        // Trim old data points if exceeding max
-        if (state.chart.data.labels.length > MAX_HISTORY_POINTS) {
-            state.chart.data.labels.shift();
-            state.chart.data.datasets[0].data.shift();
+        netChart.data.labels.push(timeLabel);
+        netChart.data.datasets[0].data.push(sentKbps);
+        netChart.data.datasets[1].data.push(recvKbps);
+        
+        if (netChart.data.labels.length > 20) {
+            netChart.data.labels.shift();
+            netChart.data.datasets[0].data.shift();
+            netChart.data.datasets[1].data.shift();
         }
         
-        // Update chart
-        state.chart.update('none'); // 'none' mode for performance
-        
-        // Update time display
-        const timeElement = document.getElementById(`${cardId}-chart-time`);
-        if (timeElement) {
-            timeElement.textContent = timeLabel;
-        }
+        netChart.update('none');
     }
-}
-
-/**
- * Update a single metric value with appropriate color coding
- */
-function updateMetricValue(cardId, metricType, value, unit) {
-    const element = document.getElementById(`${cardId}-${metricType}`);
-    if (!element) return;
-    
-    // Remove existing color classes
-    element.classList.remove('normal', 'warning', 'critical');
-    
-    // Determine color class based on value (for percentage metrics)
-    if (unit === '%' && typeof value === 'number') {
-        if (value >= 90) {
-            element.classList.add('critical');
-        } else if (value >= 70) {
-            element.classList.add('warning');
-        } else {
-            element.classList.add('normal');
-        }
-    }
-    
-    // Update the displayed value
-    const numericValue = typeof value === 'number' ? value.toFixed(1) : value;
-    element.innerHTML = `${numericValue}<span class="metric-unit">${unit}</span>`;
-}
-
-/**
- * Format network speed in KB/s
- */
-function formatNetwork(bytesPerSecond) {
-    if (typeof bytesPerSecond !== 'number') return '--';
-    return (bytesPerSecond / 1024).toFixed(2);
 }
 
 /**
@@ -510,9 +483,10 @@ function cleanup() {
         if (state.reconnectTimeout) {
             clearTimeout(state.reconnectTimeout);
         }
-        // Destroy charts
-        if (state.chart) {
-            state.chart.destroy();
+        if (state.charts) {
+            Object.values(state.charts).forEach(chart => {
+                if (chart) chart.destroy();
+            });
         }
     });
     serverStates.clear();
@@ -686,3 +660,38 @@ if (saveConfigBtn) {
 
 // Cleanup on page unload
 window.addEventListener('beforeunload', cleanup);
+
+async function fetchSpecsInline(ip, token, cardId) {
+    const specsContent = document.getElementById(`${cardId}-specs-content`);
+    if (!specsContent) return;
+    
+    const baseUrl = ip.includes(':') ? `http://${ip}` : `http://${ip}:5000`;
+    try {
+        const response = await fetch(`${baseUrl}/api/specs`, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const data = await response.json();
+        
+        const gpusHtml = data.gpu && data.gpu.length > 0 
+            ? data.gpu.map(g => `<span class="spec-value">${escapeHtml(g)}</span>`).join('')
+            : '<span class="spec-value">None</span>';
+            
+        specsContent.innerHTML = `
+            <div class="spec-row"><span class="spec-label">Hostname</span><span class="spec-value">${escapeHtml(data.hostname || 'N/A')}</span></div>
+            <div class="spec-row"><span class="spec-label">OS</span><span class="spec-value">${escapeHtml(data.os || 'N/A')}</span></div>
+            <div class="spec-row" style="margin-top: 10px;"><span class="spec-label">CPU Model</span><span class="spec-value" style="font-size: 0.75rem;">${escapeHtml(data.cpu?.model || 'N/A')}</span></div>
+            <div class="spec-row"><span class="spec-label">Cores / Threads</span><span class="spec-value">${data.cpu?.cores || '-'} / ${data.cpu?.threads || '-'}</span></div>
+            <div class="spec-row" style="margin-top: 10px;"><span class="spec-label">Total RAM</span><span class="spec-value">${data.ram?.total_gb || '-'} GB</span></div>
+            <div class="spec-row"><span class="spec-label">Root Disk</span><span class="spec-value">${data.disk?.total_gb || '-'} GB</span></div>
+            <div class="spec-row" style="margin-top: 10px;"><span class="spec-label">Graphics</span>${gpusHtml}</div>
+        `;
+    } catch (error) {
+        console.error('Error fetching specs for ' + ip + ':', error);
+        specsContent.innerHTML = `<span style="color: var(--red); font-size: 0.7rem;">Error: ${error.message}</span>`;
+    }
+}
+

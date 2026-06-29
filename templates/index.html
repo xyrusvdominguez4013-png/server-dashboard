@@ -3,79 +3,100 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Server Monitor Dashboard</title>
-    
+    <title>ServerOps — NOC Dashboard</title>
+    <meta name="description" content="Real-time server monitoring dashboard">
+
     <!-- Chart.js CDN -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-    
+
     <!-- Custom Styles -->
     <link rel="stylesheet" href="/static/css/style.css">
 </head>
 <body>
+    <!-- ═══ Header ═══════════════════════════════════════════════════════ -->
     <header class="dashboard-header">
         <div class="header-content">
             <h1 class="dashboard-title">
                 <span class="title-icon">◈</span>
-                Server Monitor
+                ServerOps
             </h1>
-            <div class="header-actions">
-                <button class="settings-btn" id="settings-btn" title="Configure Servers">
-                    <span>⚙️</span>
-                    <span>Configure</span>
-                </button>
-            </div>
-            <div class="connection-status" id="global-status">
-                <span class="status-dot"></span>
-                <span class="status-text">Initializing...</span>
+
+            <div class="header-right">
+                <div class="connection-status" id="global-status">
+                    <span class="status-dot"></span>
+                    <span class="status-text">Initializing...</span>
+                </div>
+
+                <div class="header-actions">
+                    <button class="settings-btn" id="settings-btn" title="Configure Servers">
+                        <span>⚙</span>
+                        <span>Servers</span>
+                    </button>
+                </div>
             </div>
         </div>
     </header>
 
-    <!-- Settings Modal -->
+    <!-- ═══ Settings Modal ═══════════════════════════════════════════════ -->
     <div class="modal-overlay" id="settings-modal" style="display: none;">
         <div class="modal-container">
+
             <div class="modal-header">
                 <h2>Server Configuration</h2>
-                <button class="modal-close" id="modal-close">&times;</button>
+                <button class="modal-close" id="modal-close" title="Close">✕</button>
             </div>
+
             <div class="modal-body">
+
+                <!-- Add server form -->
                 <form id="config-form">
-                    <div class="form-group">
-                        <label for="server-name">Server Name</label>
-                        <input type="text" id="server-name" placeholder="e.g., Web Server" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="server-ip">IP Address</label>
-                        <input type="text" id="server-ip" placeholder="e.g., 192.168.1.10" required>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="server-name">Name</label>
+                            <input type="text" id="server-name" placeholder="e.g., Web Server" autocomplete="off" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="server-ip">IP Address</label>
+                            <input type="text" id="server-ip" placeholder="e.g., 192.168.1.10:5000" autocomplete="off" required>
+                        </div>
                     </div>
                     <div class="form-group">
                         <label for="server-token">API Token</label>
-                        <input type="text" id="server-token" placeholder="e.g., your-secret-token" required>
+                        <input type="text" id="server-token" placeholder="Bearer token from agent" autocomplete="off" required>
                     </div>
-                    <button type="submit" class="add-server-btn">Add Server</button>
+                    <button type="submit" class="add-server-btn">+ Add Server</button>
                 </form>
+
+                <!-- List -->
                 <div class="servers-list">
-                    <h3>Configured Servers</h3>
+                    <div class="servers-list-header">
+                        <h3>Configured Servers</h3>
+                    </div>
                     <ul id="configured-servers"></ul>
                 </div>
+
             </div>
+
             <div class="modal-footer">
-                <button class="save-btn" id="save-config-btn">Save Configuration</button>
                 <button class="cancel-btn" id="cancel-btn">Cancel</button>
+                <button class="save-btn" id="save-config-btn">Save &amp; Apply</button>
             </div>
         </div>
     </div>
 
+
+
+    <!-- ═══ Main Content ════════════════════════════════════════════════ -->
     <main class="dashboard-container">
         <div class="servers-grid" id="servers-grid">
-            <!-- Server cards will be dynamically injected here -->
+            <!-- Server cards injected here -->
         </div>
-        
+
         <div class="empty-state" id="empty-state" style="display: none;">
             <div class="empty-content">
                 <span class="empty-icon">⊘</span>
                 <h2>No Servers Configured</h2>
-                <p>Add agent configurations to your .env file to start monitoring.</p>
+                <p>Click <strong>Servers</strong> in the top bar to add an agent and start monitoring.</p>
             </div>
         </div>
     </main>
