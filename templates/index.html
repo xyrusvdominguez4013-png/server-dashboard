@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Server Monitor Dashboard</title>
+    
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    
+    <!-- Custom Styles -->
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <header class="dashboard-header">
+        <div class="header-content">
+            <h1 class="dashboard-title">
+                <span class="title-icon">◈</span>
+                Server Monitor
+            </h1>
+            <div class="connection-status" id="global-status">
+                <span class="status-dot"></span>
+                <span class="status-text">Initializing...</span>
+            </div>
+        </div>
+    </header>
+
+    <main class="dashboard-container">
+        <div class="servers-grid" id="servers-grid">
+            <!-- Server cards will be dynamically injected here -->
+        </div>
+        
+        <div class="empty-state" id="empty-state" style="display: none;">
+            <div class="empty-content">
+                <span class="empty-icon">⊘</span>
+                <h2>No Servers Configured</h2>
+                <p>Add agent configurations to your .env file to start monitoring.</p>
+            </div>
+        </div>
+    </main>
+
+    <!-- Custom JavaScript -->
+    <script src="/static/js/script.js"></script>
+</body>
+</html>
