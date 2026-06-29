@@ -1,1 +1,1 @@
-Nothing needs to be added to the .gitignore file based on the provided changes, as only source/config files (README.md, master_app.py) were modified without any build artifacts, dependencies, or temporary files being introduced.
+Nothing needs to be added to .gitignore for this change list. The only file added is `install_shell.sh`, which is a shell script source file and should not be ignored.
