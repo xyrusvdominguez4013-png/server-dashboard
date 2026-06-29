@@ -243,8 +243,9 @@ async function connectToAgent(agent) {
     
     updateCardStatus(cardId, 'connecting');
     
+    const baseUrl = ip.includes(':') ? `http://${ip}` : `http://${ip}:5000`;
     try {
-        const response = await fetch(`http://${ip}:5001/stream`, {
+        const response = await fetch(`${baseUrl}/stream`, {
             method: 'GET',
             headers: {
                 'Authorization': `Bearer ${token}`,
@@ -339,9 +340,12 @@ function updateServerMetrics(ip, metrics) {
     
     // Update metric displays
     updateMetricValue(cardId, 'cpu', metrics.cpu, '%');
-    updateMetricValue(cardId, 'ram', metrics.ram, '%');
-    updateMetricValue(cardId, 'disk', metrics.disk, '%');
-    updateMetricValue(cardId, 'network', formatNetwork(metrics.network), 'KB/s');
+    updateMetricValue(cardId, 'ram', metrics.ram?.percent, '%');
+    updateMetricValue(cardId, 'disk', metrics.disk?.percent, '%');
+    
+    const totalNetworkMb = (metrics.network?.sent_mb_s || 0) + (metrics.network?.recv_mb_s || 0);
+    const networkBytesPerSec = totalNetworkMb * 1024 * 1024;
+    updateMetricValue(cardId, 'network', formatNetwork(networkBytesPerSec), 'KB/s');
     
     // Update chart
     if (state.chart) {
@@ -623,10 +627,10 @@ if (configForm) {
             token: tokenInput.value.trim()
         };
         
-        // Validate IP format (basic check)
-        const ipPattern = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/;
-        if (!ipPattern.test(newAgent.ip)) {
-            alert('Please enter a valid IP address (e.g., 192.168.1.10)');
+        // Validate IP format (allow optional port)
+        const ipPattern = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}(:\d{1,5})?$/;
+        if (!ipPattern.test(newAgent.ip) && newAgent.ip !== 'localhost') {
+            alert('Please enter a valid IP address or hostname (e.g., 192.168.1.10 or 192.168.1.10:5000)');
             return;
         }
         
