@@ -11,6 +11,7 @@ const MAX_HISTORY_POINTS = 60; // Keep last 60 data points in chart
 const serverStates = new Map(); // Store state for each server
 let activeConnections = 0;
 let totalServers = 0;
+let currentAgents = []; // Store current agent configurations
 
 /**
  * Initialize the dashboard on page load
@@ -515,6 +516,169 @@ function cleanup() {
 
 // Initialize on DOM ready
 document.addEventListener('DOMContentLoaded', init);
+
+/**
+ * Settings Modal Functions
+ */
+
+// Modal elements
+const settingsBtn = document.getElementById('settings-btn');
+const settingsModal = document.getElementById('settings-modal');
+const modalClose = document.getElementById('modal-close');
+const cancelBtn = document.getElementById('cancel-btn');
+const configForm = document.getElementById('config-form');
+const saveConfigBtn = document.getElementById('save-config-btn');
+const configuredServersList = document.getElementById('configured-servers');
+
+// Open modal
+if (settingsBtn) {
+    settingsBtn.addEventListener('click', () => {
+        settingsModal.style.display = 'flex';
+        loadCurrentAgents();
+    });
+}
+
+// Close modal functions
+function closeModal() {
+    if (settingsModal) {
+        settingsModal.style.display = 'none';
+    }
+}
+
+if (modalClose) {
+    modalClose.addEventListener('click', closeModal);
+}
+
+if (cancelBtn) {
+    cancelBtn.addEventListener('click', closeModal);
+}
+
+// Close modal when clicking outside
+if (settingsModal) {
+    settingsModal.addEventListener('click', (e) => {
+        if (e.target === settingsModal) {
+            closeModal();
+        }
+    });
+}
+
+// Load current agents from server
+async function loadCurrentAgents() {
+    try {
+        const response = await fetch('/api/agents');
+        if (response.ok) {
+            currentAgents = await response.json();
+            renderConfiguredServers();
+        }
+    } catch (error) {
+        console.error('Failed to load current agents:', error);
+    }
+}
+
+// Render the list of configured servers in the modal
+function renderConfiguredServers() {
+    if (!configuredServersList) return;
+    
+    configuredServersList.innerHTML = '';
+    
+    if (currentAgents.length === 0) {
+        configuredServersList.innerHTML = '<li class="empty-list">No servers configured yet</li>';
+        return;
+    }
+    
+    currentAgents.forEach((agent, index) => {
+        const li = document.createElement('li');
+        li.className = 'server-item';
+        li.innerHTML = `
+            <div class="server-info">
+                <span class="server-name">${escapeHtml(agent.name)}</span>
+                <span class="server-ip">${agent.ip}</span>
+            </div>
+            <button class="remove-server-btn" data-index="${index}" title="Remove server">🗑️</button>
+        `;
+        configuredServersList.appendChild(li);
+    });
+    
+    // Add event listeners to remove buttons
+    document.querySelectorAll('.remove-server-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const index = parseInt(e.target.dataset.index);
+            removeServer(index);
+        });
+    });
+}
+
+// Add a new server from the form
+if (configForm) {
+    configForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        
+        const nameInput = document.getElementById('server-name');
+        const ipInput = document.getElementById('server-ip');
+        const tokenInput = document.getElementById('server-token');
+        
+        const newAgent = {
+            name: nameInput.value.trim(),
+            ip: ipInput.value.trim(),
+            token: tokenInput.value.trim()
+        };
+        
+        // Validate IP format (basic check)
+        const ipPattern = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/;
+        if (!ipPattern.test(newAgent.ip)) {
+            alert('Please enter a valid IP address (e.g., 192.168.1.10)');
+            return;
+        }
+        
+        currentAgents.push(newAgent);
+        renderConfiguredServers();
+        
+        // Clear form
+        nameInput.value = '';
+        ipInput.value = '';
+        tokenInput.value = '';
+        nameInput.focus();
+    });
+}
+
+// Remove a server from the list
+function removeServer(index) {
+    if (index >= 0 && index < currentAgents.length) {
+        currentAgents.splice(index, 1);
+        renderConfiguredServers();
+    }
+}
+
+// Save configuration to backend
+if (saveConfigBtn) {
+    saveConfigBtn.addEventListener('click', async () => {
+        try {
+            const response = await fetch('/api/agents', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ agents: currentAgents })
+            });
+            
+            const result = await response.json();
+            
+            if (response.ok && result.success) {
+                alert(result.message + '\nNote: You may need to restart the server for changes to take effect.');
+                closeModal();
+                // Reload the page to apply new configuration
+                setTimeout(() => {
+                    location.reload();
+                }, 1000);
+            } else {
+                alert('Failed to save configuration: ' + (result.error || 'Unknown error'));
+            }
+        } catch (error) {
+            console.error('Failed to save configuration:', error);
+            alert('Failed to save configuration: ' + error.message);
+        }
+    });
+}
 
 // Cleanup on page unload
 window.addEventListener('beforeunload', cleanup);

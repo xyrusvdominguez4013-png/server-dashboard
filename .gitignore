@@ -1,1 +1,30 @@
-Nothing needs to be added to .gitignore for this change list. The only file added is `install_shell.sh`, which is a shell script source file and should not be ignored.
+```
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Logs and temp files
+*.log
+*.tmp
+
+# Environment
+.env
+.env.local
+*.env.*
+
+# Editors
+.vscode/
+.idea/
+
+# Dependencies
+.venv/
+venv/
+node_modules/
+
+# Build artifacts
+dist/
+build/
+target/
+```
