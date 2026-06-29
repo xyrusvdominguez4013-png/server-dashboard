@@ -89,7 +89,17 @@ AGENTS_CONFIG='[
 python master_app.py
 ```
 
-The dashboard will be available at: **http://localhost:5000**
+The dashboard will be available at: **http://localhost:5000** (or the port specified in your `.env` file)
+
+### Custom Port
+
+To run on a different port (useful if 5000 is already in use), set the `PORT` environment variable in your `.env` file:
+
+```env
+PORT=5001
+```
+
+Then restart the application. The dashboard will be available at: **http://localhost:5001**
 
 ### Production Mode
 

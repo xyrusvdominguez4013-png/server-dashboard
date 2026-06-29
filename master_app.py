@@ -56,5 +56,8 @@ if __name__ == '__main__':
             ip = agent.get('ip', 'Unknown')
             print(f"  - {name} ({ip})")
     
+    # Get port from environment variable, default to 5000
+    port = int(os.getenv('PORT', 5000))
+    
     # Run the Flask development server
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    app.run(host='0.0.0.0', port=port, debug=True)
