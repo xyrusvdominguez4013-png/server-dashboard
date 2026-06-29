@@ -18,12 +18,53 @@
                 <span class="title-icon">◈</span>
                 Server Monitor
             </h1>
+            <div class="header-actions">
+                <button class="settings-btn" id="settings-btn" title="Configure Servers">
+                    <span>⚙️</span>
+                    <span>Configure</span>
+                </button>
+            </div>
             <div class="connection-status" id="global-status">
                 <span class="status-dot"></span>
                 <span class="status-text">Initializing...</span>
             </div>
         </div>
     </header>
+
+    <!-- Settings Modal -->
+    <div class="modal-overlay" id="settings-modal" style="display: none;">
+        <div class="modal-container">
+            <div class="modal-header">
+                <h2>Server Configuration</h2>
+                <button class="modal-close" id="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="config-form">
+                    <div class="form-group">
+                        <label for="server-name">Server Name</label>
+                        <input type="text" id="server-name" placeholder="e.g., Web Server" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="server-ip">IP Address</label>
+                        <input type="text" id="server-ip" placeholder="e.g., 192.168.1.10" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="server-token">API Token</label>
+                        <input type="text" id="server-token" placeholder="e.g., your-secret-token" required>
+                    </div>
+                    <button type="submit" class="add-server-btn">Add Server</button>
+                </form>
+                <div class="servers-list">
+                    <h3>Configured Servers</h3>
+                    <ul id="configured-servers"></ul>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="save-btn" id="save-config-btn">Save Configuration</button>
+                <button class="cancel-btn" id="cancel-btn">Cancel</button>
+            </div>
+        </div>
+    </div>
 
     <main class="dashboard-container">
         <div class="servers-grid" id="servers-grid">
