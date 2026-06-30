@@ -99,6 +99,13 @@ function createServerCard(agent, cardId) {
             <div id="${cardId}-specs-content" class="inline-specs">
                 <div class="loading-text">Fetching specs...</div>
             </div>
+            <div class="panel-title" style="margin-top: 24px;">Live Status</div>
+            <div class="inline-specs">
+                <div class="spec-row">
+                    <span class="spec-label">Uptime</span>
+                    <span class="spec-value" id="${cardId}-uptime" style="color: var(--accent);">--</span>
+                </div>
+            </div>
         </div>
         <div class="metrics-panel">
             <div class="panel-title">Real-time Telemetry</div>
@@ -358,6 +365,13 @@ function updateServerMetrics(ip, metrics) {
     updateDonut(state.charts.ram, metrics.ram?.percent);
     updateDonut(state.charts.disk, metrics.disk?.percent);
     
+    if (metrics.uptime !== undefined) {
+        const uptimeEl = document.getElementById(`${cardId}-uptime`);
+        if (uptimeEl) {
+            uptimeEl.textContent = formatUptime(metrics.uptime);
+        }
+    }
+    
     if (state.charts.net) {
         const netChart = state.charts.net;
         const now = new Date();
@@ -468,6 +482,21 @@ function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+}
+
+/**
+ * Format uptime in seconds to d h m
+ */
+function formatUptime(seconds) {
+    if (seconds === undefined || seconds === null) return '--';
+    const d = Math.floor(seconds / (3600 * 24));
+    const h = Math.floor((seconds % (3600 * 24)) / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    const parts = [];
+    if (d > 0) parts.push(`${d}d`);
+    if (h > 0) parts.push(`${h}h`);
+    parts.push(`${m}m`);
+    return parts.join(' ') || '< 1m';
 }
 
 /**
